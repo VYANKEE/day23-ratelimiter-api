@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const rateLimiter = require('./rateLimiter');
+const rateLimiter = require('./ratelimiter');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // API route par Rate Limiter lagao
-app.use('/api', rateLimiter);
+app.use('/api', ratelimiter);
 
 // Test Endpoint
 app.get('/api/data', (req, res) => {
