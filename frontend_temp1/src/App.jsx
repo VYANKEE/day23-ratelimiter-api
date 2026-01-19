@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 
-// RENDER URL UPDATE KARNA MAT BHOOLNA
-// Render wala naya URL yahan daal diya hai
-const API_URL = "https://day23-ratelimiter-api-1.onrender.com/api/data";
+// DEPLOYMENT KE BAAD ISKO CHANGE KARNA
+const API_URL = "http://localhost:4000/api/data"; 
 
 function App() {
   const [response, setResponse] = useState(null);
@@ -12,25 +11,31 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0); 
 
-  // --- 🔥 FIXED TIMER LOGIC (Wahi same logic jo fix kiya tha) ---
+  // --- 🔥 AUTO-RESET LOGIC ---
   useEffect(() => {
     let timer;
     if (cooldown > 0) {
+      // Timer chal raha hai (59, 58, 57...)
       timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
     } 
-    else if (cooldown === 0 && requestsLeft === 0 && status === 429) {
-      setRequestsLeft(5);
+    else if (cooldown === 0 && status === 429) {
+      // MAGIC: Jab Timer 0 hua, agar hum Blocked (429) the -> TOH RESET KAR DO
+      setRequestsLeft(5); 
       setStatus(null);
-      setResponse({ message: "✅ System Cooldown Complete. You can send requests now!" });
+      setResponse({ message: "✅ System Cooldown Complete. Requests restored!" });
     }
     return () => clearTimeout(timer);
-  }, [cooldown, requestsLeft, status]);
+  }, [cooldown, status]);
+
 
   const testApi = async () => {
+    // Agar cooldown chal raha hai, toh click mat hone do
     if (cooldown > 0) return; 
 
     setLoading(true);
     setResponse(null); 
+    
+    // Fake delay animation ke liye
     await new Promise(r => setTimeout(r, 400)); 
 
     try {
@@ -41,17 +46,25 @@ function App() {
       setResponse(data);
       
       if (res.status === 429) {
+        // --- BLOCKED HAI ---
         setRequestsLeft(0);
-        const safeWaitTime = (data.retryIn || 60) + 1;
-        setCooldown(safeWaitTime); 
+        // Backend se time lo, aur +1 second safety buffer add karo
+        const waitTime = (data.retryIn || 60) + 1;
+        setCooldown(waitTime); 
       } else {
-        setRequestsLeft(prev => prev > 0 ? prev - 1 : 0);
+        // --- SUCCESS HAI ---
+        // Agar frontend 0 par tha par backend ne Success diya (Sync Fix)
+        if (requestsLeft === 0) {
+           setRequestsLeft(4); 
+        } else {
+           setRequestsLeft(prev => prev > 0 ? prev - 1 : 0);
+        }
       }
       
     } catch (err) {
       console.error(err);
       setStatus(500);
-      setResponse({ error: "Backend connect nahi ho raha! (Server start kiya?)" });
+      setResponse({ error: "Backend connect nahi ho raha hai!" });
     }
     setLoading(false);
   };
@@ -62,74 +75,44 @@ function App() {
   return (
     <div className="container">
       
-      {/* 1. HERO SECTION */}
+      {/* 1. HERO */}
       <section className="hero">
-        <div style={{ marginBottom: '1rem', fontSize: '3rem' }}>🚀</div>
-        <h1>Rate Limit <br /> API Demo</h1>
-        <p className="subtitle">
-          Protect your backend from abuse, spam, and overload.
-          <br />Test the limits below.
-        </p>
-        <button 
-          className="btn-glow" 
-          onClick={() => document.getElementById('terminal').scrollIntoView({ behavior: 'smooth' })}
-        >
+        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚀</div>
+        <h1>Rate Limit API</h1>
+        <p className="subtitle">Backend Protection & Abuse Prevention Demo</p>
+        <button className="btn-glow" onClick={() => document.getElementById('terminal').scrollIntoView({ behavior: 'smooth' })}>
           Test Live API
         </button>
       </section>
 
-      {/* 2. WHY USE THIS? (Restored) */}
+      {/* 2. WHY */}
       <section>
-        <h2 style={{ textAlign: 'center', marginBottom: '3rem' }}>Why Rate Limiting?</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>Why use this?</h2>
         <div className="grid-cards">
           <div className="glass-card">
             <span className="icon-box">🛡️</span>
-            <h3>Security (DDoS)</h3>
-            <p style={{ color: '#aaa' }}>Prevents malicious bots from crashing your server by flooding it with millions of requests.</p>
+            <h3>DDoS Protection</h3>
+            <p style={{color: '#aaa'}}>Blocks malicious bots from spamming your server.</p>
           </div>
           <div className="glass-card">
-            <span className="icon-box">⚖️</span>
-            <h3>Fairness</h3>
-            <p style={{ color: '#aaa' }}>Ensures no single user hogs all the server resources, keeping the app fast for everyone else.</p>
-          </div>
-          <div className="glass-card">
-            <span className="icon-box">💰</span>
-            <h3>Cost Control</h3>
-            <p style={{ color: '#aaa' }}>API calls cost server money. Rate limiting prevents unexpected huge bills from accidental loops.</p>
+            <span className="icon-box">⚡</span>
+            <h3>Fair Usage</h3>
+            <p style={{color: '#aaa'}}>Ensures every user gets equal resources.</p>
           </div>
         </div>
       </section>
 
-      {/* 3. HOW IT WORKS (Restored) */}
-      <section>
-        <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>How It Works</h2>
-        <div className="glass-card" style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'left' }}>
-          <p style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#00dfd8' }}>
-            <strong>Algorithm: Fixed Window Counter</strong>
-          </p>
-          <ul style={{ lineHeight: '2', color: '#ccc' }}>
-            <li>1. User sends a request to <code>/api/data</code>.</li>
-            <li>2. Middleware checks the <strong>IP Address</strong>.</li>
-            <li>3. If requests &lt; 5 in last 60s → <strong>Allow</strong> & Increment Count.</li>
-            <li>4. If requests &gt;= 5 → <strong>Block</strong> (Return 429 Error).</li>
-            <li>5. After 60s window passes → <strong>Reset</strong> Count to 0.</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* 4. TERMINAL UI SECTION */}
+      {/* 3. TERMINAL (MAIN UI) */}
       <section id="terminal">
         <div className="terminal-wrapper">
           <div className="terminal-header">
-            <div className="dot red"></div>
-            <div className="dot yellow"></div>
-            <div className="dot green"></div>
+            <div className="dot red"></div><div className="dot yellow"></div><div className="dot green"></div>
             <span style={{ marginLeft: '10px', color: '#666', fontSize: '0.8rem' }}>bash — api-test</span>
           </div>
 
           <div className="terminal-body">
             
-            {/* Status Bar */}
+            {/* STATUS BAR */}
             <div className="status-bar">
               <div>
                 {cooldown > 0 ? (
@@ -141,30 +124,24 @@ function App() {
                      {isBlocked ? 'SYSTEM LOCKED 🔒' : 'SYSTEM ACTIVE 🟢'}
                    </strong>
                 )}
-                
-                <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>
-                  {cooldown > 0 ? 'Wait for timer...' : 'Limit: 5 req/min'}
-                </div>
+                <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '5px' }}>Limit: 5 Requests / Min</div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
                 <div style={{ marginBottom: '5px', fontSize: '0.9rem' }}>Remaining: {requestsLeft}</div>
                 <div className="progress-container">
-                  <div 
-                    className={`progress-fill ${isBlocked ? 'danger' : ''}`} 
-                    style={{ width: `${progressWidth}%` }}
-                  ></div>
+                  <div className={`progress-fill ${isBlocked ? 'danger' : ''}`} style={{ width: `${progressWidth}%` }}></div>
                 </div>
               </div>
             </div>
 
-            {/* Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+            {/* CONTROLS */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <span style={{ color: '#00dfd8' }}>➜  ~</span>
               <button 
                 className="btn-glow" 
                 style={{ 
-                  padding: '0.5rem 1.5rem', 
+                  padding: '0.8rem 2rem', 
                   fontSize: '0.9rem',
                   opacity: cooldown > 0 ? 0.5 : 1, 
                   cursor: cooldown > 0 ? 'not-allowed' : 'pointer'
@@ -176,7 +153,7 @@ function App() {
               </button>
             </div>
 
-            {/* Output */}
+            {/* OUTPUT */}
             <div className={`code-output ${status === 429 ? 'error' : ''}`}>
               {!response && <span style={{ opacity: 0.5 }}>// Waiting for request...</span>}
               {response && JSON.stringify(response, null, 2)}
@@ -186,8 +163,8 @@ function App() {
         </div>
       </section>
 
-      <footer style={{ textAlign: 'center', padding: '3rem', color: '#444', fontSize: '0.9rem' }}>
-        <p>DESIGNED FOR DEVS • 2026</p>
+      <footer style={{ textAlign: 'center', padding: '3rem', color: '#555' }}>
+        <p>Built for Developers • 2026</p>
       </footer>
     </div>
   );

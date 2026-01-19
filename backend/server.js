@@ -1,15 +1,15 @@
-// backend/server.js
 const express = require('express');
 const cors = require('cors');
-const rateLimiter = require('./ratelimiter');
+const rateLimiter = require('./rateLimiter');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors()); // Frontend connection allow karo
+// Frontend ko allow karo
+app.use(cors());
 app.use(express.json());
 
-// API Route par Rate Limiter lagao
+// API route par Rate Limiter lagao
 app.use('/api', rateLimiter);
 
 // Test Endpoint
