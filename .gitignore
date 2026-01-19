@@ -1,0 +1,24 @@
+# Dependencies (Sabse Important)
+node_modules/
+
+# Environment Variables (Security ke liye)
+.env
+.env.local
+.env.production
+
+# Build Outputs (Deploy karte waqt naya banta hai)
+dist/
+build/
+
+# Logs (Error files)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files (Mac/Windows ka kachra)
+.DS_Store
+Thumbs.db
+
+# IDE Files (VS Code settings)
+.vscode/
+.idea/
